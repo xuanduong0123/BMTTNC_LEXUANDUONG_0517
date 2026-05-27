@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Rail Fence Cipher</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="container mt-4">
+        <table class="table table-bordered">
+            <tr>
+                <td colspan="2" style="text-align: center; font-weight: bold; font-size: 25px; background-color: #f1f3f5;">RAIL FENCE CIPHER</td>
+            </tr>
+            <tr>
+                <td style="width: 50%; vertical-align: top;">
+                    <h5 style="font-weight: bold; color: blue;">ENCRYPTION</h5>
+                    <form method="POST" action="/railfence/encrypt">
+                        <div class="mb-3">
+                            <label class="form-label">Plain text:</label>
+                            <input type="text" class="form-control" name="inputPlainText" value="{{ plain_text if plain_text else '' }}" placeholder="Input Plain Text" required autofocus />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Key (Số tầng hằng rào):</label>
+                            <input type="number" class="form-control" name="inputKeyPlain" value="{{ key if key else '' }}" placeholder="Input Number Key" required />
+                        </div>
+                        <button type="submit" class="btn btn-primary">Encrypt</button>
+                    </form>
+                    {% if encrypted_text %}
+                    <div class="alert alert-primary mt-3"><strong>Result:</strong> {{ encrypted_text }}</div>
+                    {% endif %}
+                </td>
+                <td style="width: 50%; vertical-align: top;">
+                    <h5 style="font-weight: bold; color: green;">DECRYPTION</h5>
+                    <form method="POST" action="/railfence/decrypt">
+                        <div class="mb-3">
+                            <label class="form-label">Cipher text:</label>
+                            <input type="text" class="form-control" name="inputCipherText" value="{{ cipher_text if cipher_text else '' }}" placeholder="Input Cipher Text" required />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Key (Số tầng hàng rào):</label>
+                            <input type="number" class="form-control" name="inputKeyCipher" value="{{ key if key else '' }}" placeholder="Input Number Key" required />
+                        </div>
+                        <button type="submit" class="btn btn-success">Decrypt</button>
+                    </form>
+                    {% if decrypted_text %}
+                    <div class="alert alert-success mt-3"><strong>Result:</strong> {{ decrypted_text }}</div>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+        <div class="text-center"><a href="/" class="btn btn-secondary btn-sm">Quay về trang chủ</a></div>
+    </div>
+</body>
+</html>
