@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô phỏng AES-RSA - Server + 2 Clients | Chat an toàn</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #a78bfa;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+            color: rgba(255,255,255,0.7);
+            margin-top: 5px;
+        }
+
+        /* Step Indicator */
+        .step-indicator {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            border-radius: 60px;
+            padding: 12px 24px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .step {
+            text-align: center;
+            flex: 1;
+            min-width: 90px;
+        }
+
+        .step .circle {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-weight: bold;
+            color: white;
+            transition: all 0.3s;
+        }
+
+        .step.active .circle {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            box-shadow: 0 0 15px rgba(102,126,234,0.5);
+        }
+
+        .step.completed .circle {
+            background: #10b981;
+        }
+
+        .step-label {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .step.active .step-label {
+            color: white;
+            font-weight: 500;
+        }
+
+        /* Server Card - Expanded */
+        .server-card {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .server-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .server-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .server-status {
+            background: #10b98120;
+            color: #34d399;
+            padding: 5px 14px;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            border: 1px solid #10b981;
+        }
+
+        .key-display {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+
+        .key-display strong {
+            color: #c4b5fd;
+            font-size: 0.8rem;
+        }
+
+        .key-display span {
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            word-break: break-all;
+            color: #a5f3fc;
+        }
+
+        /* Server Chat Box - HIỂN THỊ TIN NHẮN MÃ HÓA */
+        .server-chat-box {
+            background: #eeeef0;
+            border-radius: 16px;
+            margin: 15px 0;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+
+        .server-chat-header {
+            background: #2d2d5e;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid #4a4a7a;
+        }
+
+        .server-chat-header span {
+            color: #fbbf24;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .server-chat-header small {
+            color: rgba(5, 0, 0, 0.986);
+            font-size: 0.7rem;
+            margin-left: auto;
+        }
+
+        .server-messages {
+            height: 200px;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+        }
+
+        .server-msg {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-left: 3px solid #fbbf24;
+        }
+
+        .server-msg-time {
+            color: #fbbf24;
+            font-size: 0.65rem;
+        }
+
+        .server-msg-from {
+            color: #86efac;
+            font-weight: bold;
+        }
+
+        .server-msg-encrypted {
+            color: #fca5a5;
+            word-break: break-all;
+            font-family: monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 4px 6px;
+            border-radius: 4px;
+            margin-top: 4px;
+            display: inline-block;
+            max-width: 100%;
+            font-size: 0.7rem;
+        }
+
+        .clients-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .client-badge {
+            background: rgba(255,255,255,0.1);
+            padding: 6px 14px;
+            border-radius: 25px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+        }
+
+        .client-badge.online {
+            background: #10b98120;
+            border: 1px solid #10b981;
+            color: #34d399;
+        }
+
+        /* Dashboard Clients */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+        }
+
+        .card h2 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            padding: 16px 20px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .key-info {
+            background: #f3f4f6;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .key-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.75rem;
+        }
+
+        .key-label {
+            color: #6b7280;
+        }
+
+        .key-value {
+            font-family: monospace;
+            color: #374151;
+            font-size: 0.65rem;
+            word-break: break-all;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        .message-area {
+            margin: 15px 0;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-family: monospace;
+            resize: vertical;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: opacity 0.3s;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        button:hover:not(:disabled) {
+            opacity: 0.9;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .chat-messages {
+            background: #f9fafb;
+            border-radius: 12px;
+            height: 250px;
+            overflow-y: auto;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .message.sent {
+            text-align: right;
+        }
+
+        .message.sent .msg-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 18px 18px 4px 18px;
+            max-width: 85%;
+            font-size: 0.85rem;
+        }
+
+        .message.received .msg-bubble {
+            background: white;
+            color: #1f2937;
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 18px 18px 18px 4px;
+            max-width: 85%;
+            font-size: 0.85rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
+        }
+
+        .message-system {
+            background: #fef3c7;
+            color: #92400e;
+            text-align: center;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+
+        .msg-sender {
+            font-size: 0.65rem;
+            margin-bottom: 3px;
+            color: #9ca3af;
+        }
+
+        /* Log Card */
+        .log-card {
+            background: #1e1e2e;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 0;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: #cdd6f4;
+            border-bottom: 1px solid #313244;
+            padding-bottom: 10px;
+        }
+
+        .encryption-details {
+            background: #1e1e2e;
+            color: #cdd6f4;
+            padding: 0;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 0.7rem;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .log-line {
+            border-bottom: 1px solid #313244;
+            padding: 6px 0;
+            font-family: monospace;
+        }
+
+        .clear-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #a6adc8;
+            padding: 5px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            width: auto;
+        }
+
+        .explanation-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-top: 25px;
+        }
+
+        .explanation-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Mô phỏng AES-RSA Hybrid</h1>
+        <div class="subtitle">Mã hóa kết hợp RSA (trao đổi khóa) + AES (mã hóa dữ liệu) | 2 Clients + 1 Server</div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalMessages">0</div>
+                <div class="stat-label">Tổng tin nhắn</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="encryptCount">0</div>
+                <div class="stat-label">Đã mã hóa (AES)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="aesKeySize">-</div>
+                <div class="stat-label">AES Key (bits)</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="rsaKeySize">2048</div>
+                <div class="stat-label">RSA Key (bits)</div>
+            </div>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step" id="step1">
+                <div class="circle">1</div>
+                <div class="step-label">Tạo RSA Key Pair</div>
+            </div>
+            <div class="step" id="step2">
+                <div class="circle">2</div>
+                <div class="step-label">Trao đổi Public Key</div>
+            </div>
+            <div class="step" id="step3">
+                <div class="circle">3</div>
+                <div class="step-label">Tạo & Mã hóa AES Key</div>
+            </div>
+            <div class="step" id="step4">
+                <div class="circle">4</div>
+                <div class="step-label">Chat an toàn (AES)</div>
+            </div>
+        </div>
+
+        <!-- Server Card với Chat Box hiển thị tin nhắn mã hóa -->
+        <div class="server-card">
+            <div class="server-header">
+                <div class="server-title">
+                    <span>🖥️</span> SERVER
+                </div>
+                <div class="server-status" id="serverStatus">● Đang khởi tạo...</div>
+            </div>
+            
+            <div class="key-display">
+                <strong>🔑 RSA Public Key:</strong><br>
+                <span id="serverPubKey">Đang tạo...</span>
+            </div>
+            
+            <div class="key-display">
+                <strong>🔐 AES Session Key (Chung cho tất cả clients):</strong><br>
+                <span id="globalAESKey">Đang tạo...</span>
+            </div>
+
+            <!-- SERVER CHAT BOX - Hiển thị tin nhắn đã mã hóa -->
+            <div class="server-chat-box">
+                <div class="server-chat-header">
+                    <span>📡 SERVER LOG - Tin nhắn đã mã hóa nhận được từ Clients</span>
+                    <small>Mã hóa AES-256-CBC</small>
+                </div>
+                <div class="server-messages" id="serverMessages">
+                    <div class="server-msg">
+                        <div class="server-msg-time">[--:--:--]</div>
+                        <div>🔄 Đang khởi tạo server...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-display">
+                <strong>👥 Clients đã kết nối:</strong>
+                <div class="clients-list" id="clientsList">
+                    <span>Đang kết nối...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clients Grid -->
+        <div class="dashboard">
+            <!-- Client 1 -->
+            <div class="card">
+                <h2>👤 CLIENT 1</h2>
+                <div class="card-body">
+                    <div class="key-info">
+                        <div class="key-row">
+                            <span class="key-label">RSA Public Key:</span>
+                            <span class="key-value" id="client1PubKey">-</span>
+                        </div>
+                        <div class="key-row">
+                            <span class="key-label">AES Session Key:</span>
+                            <span class="key-value" id="client1AESKey">-</span>
+                        </div>
+                    </div>
+                    <div class="message-area">
+                        <textarea id="client1Message" rows="2" placeholder="Nhập tin nhắn..."></textarea>
+                        <button onclick="sendMessage(1)" id="client1SendBtn" disabled>📤 Gửi tin nhắn (AES mã hóa)</button>
+                    </div>
+                    <div class="chat-messages" id="client1Chat">
+                        <div class="message-system">🔄 Đang thiết lập kết nối an toàn...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client 2 -->
+            <div class="card">
+                <h2>👤 CLIENT 2</h2>
+                <div class="card-body">
+                    <div class="key-info">
+                        <div class="key-row">
+                            <span class="key-label">RSA Public Key:</span>
+                            <span class="key-value" id="client2PubKey">-</span>
+                        </div>
+                        <div class="key-row">
+                            <span class="key-label">AES Session Key:</span>
+                            <span class="key-value" id="client2AESKey">-</span>
+                        </div>
+                    </div>
+                    <div class="message-area">
+                        <textarea id="client2Message" rows="2" placeholder="Nhập tin nhắn..."></textarea>
+                        <button onclick="sendMessage(2)" id="client2SendBtn" disabled>📤 Gửi tin nhắn (AES mã hóa)</button>
+                    </div>
+                    <div class="chat-messages" id="client2Chat">
+                        <div class="message-system">🔄 Đang thiết lập kết nối an toàn...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Log Card -->
+        <div class="log-card">
+            <div class="log-header">
+                <span>📋 LOG HỆ THỐNG - Chi tiết quá trình mã hóa/giải mã</span>
+                <button class="clear-btn" onclick="clearLogs()">Xóa log</button>
+            </div>
+            <div class="encryption-details" id="encryptionLog">
+                <div class="log-line">🚀 Khởi tạo mô phỏng AES-RSA với 2 Clients...</div>
+            </div>
+        </div>
+
+        <!-- Explanation -->
+        <div class="explanation-card">
+            <h3>📖 Giải thích quy trình mã hóa lai ghép RSA-AES</h3>
+            <div style="line-height: 1.6; color: #4b5563;">
+                <p><strong>1. Tạo RSA Key Pair:</strong> Server và mỗi client tạo cặp khóa RSA (2048-bit) - khóa công khai và khóa riêng tư.</p>
+                <p><strong>2. Trao đổi Public Key:</strong> Server và các client trao đổi khóa công khai RSA với nhau.</p>
+                <p><strong>3. Tạo và mã hóa AES Key:</strong> Server tạo <strong>một AES key (256-bit) CHUNG</strong> cho tất cả clients, sau đó mã hóa AES key này bằng RSA public key của từng client và gửi riêng cho mỗi client.</p>
+                <p><strong>4. Chat an toàn:</strong> Mỗi client giải mã AES key bằng RSA private key của mình. Tất cả clients dùng <strong>CHUNG một AES key</strong> để mã hóa/giải mã tin nhắn.</p>
+                <p><strong>📡 Server Log:</strong> Server hiển thị <span style="color:#fca5a5;background:#1e1e2e;padding:2px 6px;border-radius:4px;">tin nhắn đã mã hóa (ciphertext)</span> nhận được từ mỗi client, chứng minh dữ liệu được bảo vệ trên đường truyền.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Crypto Simulator using Web Crypto API
+        class CryptoSimulator {
+            constructor() {
+                this.serverKeys = null;
+                this.clients = {
+                    1: { keys: null, aesKey: null, pubKey: null },
+                    2: { keys: null, aesKey: null, pubKey: null }
+                };
+                this.globalAESKey = null;
+                this.totalMessages = 0;
+                this.encryptCount = 0;
+                this.logs = [];
+                this.serverMessages = [];
+                this.ready = false;
+            }
+
+            async generateRSA() {
+                return await crypto.subtle.generateKey(
+                    {
+                        name: "RSA-OAEP",
+                        modulusLength: 2048,
+                        publicExponent: new Uint8Array([1, 0, 1]),
+                        hash: "SHA-256",
+                    },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+            }
+
+            async exportPubKey(key) {
+                const exported = await crypto.subtle.exportKey("spki", key);
+                return this.toBase64(exported);
+            }
+
+            async importPubKey(base64) {
+                const binary = this.fromBase64(base64);
+                return await crypto.subtle.importKey(
+                    "spki",
+                    binary,
+                    { name: "RSA-OAEP", hash: "SHA-256" },
+                    true,
+                    ["encrypt"]
+                );
+            }
+
+            async generateAES() {
+                return await crypto.subtle.generateKey(
+                    { name: "AES-CBC", length: 256 },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+            }
+
+            async encryptAESKey(aesKey, publicKey) {
+                const exported = await crypto.subtle.exportKey("raw", aesKey);
+                const encrypted = await crypto.subtle.encrypt(
+                    { name: "RSA-OAEP" },
+                    publicKey,
+                    exported
+                );
+                return this.toBase64(encrypted);
+            }
+
+            async decryptAESKey(encryptedBase64, privateKey) {
+                const encrypted = this.fromBase64(encryptedBase64);
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "RSA-OAEP" },
+                    privateKey,
+                    encrypted
+                );
+                return await crypto.subtle.importKey(
+                    "raw",
+                    decrypted,
+                    { name: "AES-CBC" },
+                    true,
+                    ["encrypt", "decrypt"]
+                );
+            }
+
+            async encryptMessage(msg, aesKey) {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(msg);
+                const iv = crypto.getRandomValues(new Uint8Array(16));
+                
+                const encrypted = await crypto.subtle.encrypt(
+                    { name: "AES-CBC", iv: iv },
+                    aesKey,
+                    data
+                );
+                
+                const result = new Uint8Array(iv.length + encrypted.byteLength);
+                result.set(iv);
+                result.set(new Uint8Array(encrypted), iv.length);
+                
+                this.encryptCount++;
+                this.updateStats();
+                
+                return this.toBase64(result.buffer);
+            }
+
+            async decryptMessage(encryptedBase64, aesKey) {
+                const encrypted = this.fromBase64(encryptedBase64);
+                const encryptedArr = new Uint8Array(encrypted);
+                const iv = encryptedArr.slice(0, 16);
+                const ciphertext = encryptedArr.slice(16);
+                
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "AES-CBC", iv: iv },
+                    aesKey,
+                    ciphertext
+                );
+                
+                const decoder = new TextDecoder();
+                return decoder.decode(decrypted);
+            }
+
+            toBase64(buffer) {
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                return btoa(binary);
+            }
+
+            fromBase64(base64) {
+                const binary = atob(base64);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    bytes[i] = binary.charCodeAt(i);
+                }
+                return bytes.buffer;
+            }
+
+            addServerMessage(fromClient, encryptedMsg) {
+                const time = new Date().toLocaleTimeString('vi-VN');
+                const msgHtml = `
+                    <div class="server-msg">
+                        <div class="server-msg-time">[${time}]</div>
+                        <div>📥 Nhận từ <span class="server-msg-from">Client ${fromClient}</span></div>
+                        <div>🔐 Tin nhắn đã mã hóa (AES-256-CBC):</div>
+                        <div class="server-msg-encrypted">${encryptedMsg.substring(0, 80)}${encryptedMsg.length > 80 ? '...' : ''}</div>
+                    </div>
+                `;
+                this.serverMessages.unshift(msgHtml);
+                if (this.serverMessages.length > 20) this.serverMessages.pop();
+                const serverMsgContainer = document.getElementById('serverMessages');
+                if (serverMsgContainer) {
+                    serverMsgContainer.innerHTML = this.serverMessages.join('');
+                }
+            }
+
+            addLog(msg, type = 'info') {
+                const icons = { info: 'ℹ️', success: '✅', error: '❌', crypto: '🔐', key: '🔑' };
+                const time = new Date().toLocaleTimeString('vi-VN');
+                this.logs.unshift(`<div class="log-line">${icons[type] || '📝'} [${time}] ${msg}</div>`);
+                if (this.logs.length > 60) this.logs.pop();
+                document.getElementById('encryptionLog').innerHTML = this.logs.join('');
+            }
+
+            updateStats() {
+                document.getElementById('encryptCount').textContent = this.encryptCount;
+                document.getElementById('totalMessages').textContent = this.totalMessages;
+            }
+
+            incMessage() {
+                this.totalMessages++;
+                this.updateStats();
+            }
+        }
+
+        const cryptoSim = new CryptoSimulator();
+        let step = 1;
+        let initialized = false;
+
+        function updateStepIndicator(currentStep) {
+            for (let i = 1; i <= 4; i++) {
+                const stepEl = document.getElementById(`step${i}`);
+                if (i < currentStep) {
+                    stepEl.classList.add('completed');
+                    stepEl.classList.remove('active');
+                } else if (i === currentStep) {
+                    stepEl.classList.add('active');
+                    stepEl.classList.remove('completed');
+                } else {
+                    stepEl.classList.remove('active', 'completed');
+                }
+            }
+        }
+
+        function addChatMessage(clientId, message, type = 'received', senderId = null) {
+            const chatContainer = document.getElementById(`client${clientId}Chat`);
+            const messageDiv = document.createElement('div');
+            
+            if (type === 'system') {
+                messageDiv.className = 'message-system';
+                messageDiv.textContent = message;
+            } else if (type === 'sent') {
+                messageDiv.className = 'message sent';
+                messageDiv.innerHTML = `<div class="msg-bubble">${escapeHtml(message)}</div>`;
+            } else {
+                messageDiv.className = 'message received';
+                const senderName = senderId === clientId ? 'Bạn' : `Client ${senderId}`;
+                messageDiv.innerHTML = `<div class="msg-sender">${senderName}</div><div class="msg-bubble">${escapeHtml(message)}</div>`;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function initialize() {
+            cryptoSim.addLog('🚀 BẮT ĐẦU MÔ PHỎNG AES-RSA VỚI 2 CLIENTS', 'info');
+            
+            // Step 1: Generate RSA keys
+            cryptoSim.addLog('📦 BƯỚC 1: Tạo cặp khóa RSA (2048-bit)...', 'crypto');
+            updateStepIndicator(1);
+            step = 1;
+            
+            cryptoSim.serverKeys = await cryptoSim.generateRSA();
+            cryptoSim.clients[1].keys = await cryptoSim.generateRSA();
+            cryptoSim.clients[2].keys = await cryptoSim.generateRSA();
+            
+            const serverPub = await cryptoSim.exportPubKey(cryptoSim.serverKeys.publicKey);
+            const c1Pub = await cryptoSim.exportPubKey(cryptoSim.clients[1].keys.publicKey);
+            const c2Pub = await cryptoSim.exportPubKey(cryptoSim.clients[2].keys.publicKey);
+            
+            cryptoSim.clients[1].pubKey = c1Pub;
+            cryptoSim.clients[2].pubKey = c2Pub;
+            
+            document.getElementById('serverPubKey').innerHTML = serverPub.substring(0, 70) + '...';
+            document.getElementById('client1PubKey').innerHTML = c1Pub.substring(0, 50) + '...';
+            document.getElementById('client2PubKey').innerHTML = c2Pub.substring(0, 50) + '...';
+            
+            cryptoSim.addLog('✅ Server: RSA Key Pair đã tạo xong', 'success');
+            cryptoSim.addLog('✅ Client 1: RSA Key Pair đã tạo xong', 'success');
+            cryptoSim.addLog('✅ Client 2: RSA Key Pair đã tạo xong', 'success');
+            
+            // Step 2: Exchange public keys
+            cryptoSim.addLog('🔄 BƯỚC 2: Trao đổi khóa công khai RSA...', 'crypto');
+            updateStepIndicator(2);
+            step = 2;
+            
+            cryptoSim.addLog('📤 Server gửi public key cho Client 1 & Client 2', 'key');
+            cryptoSim.addLog('📤 Client 1 & Client 2 gửi public key cho Server', 'key');
+            cryptoSim.addLog('✅ Trao đổi public key hoàn tất', 'success');
+            
+            // Step 3: Generate ONE global AES key
+            cryptoSim.addLog('🔑 BƯỚC 3: Tạo AES key (256-bit) CHUNG cho tất cả clients...', 'crypto');
+            updateStepIndicator(3);
+            step = 3;
+            
+            cryptoSim.globalAESKey = await cryptoSim.generateAES();
+            const exportedGlobalAES = await crypto.subtle.exportKey("raw", cryptoSim.globalAESKey);
+            const globalAESStr = cryptoSim.toBase64(exportedGlobalAES);
+            document.getElementById('globalAESKey').innerHTML = globalAESStr.substring(0, 60) + '...';
+            cryptoSim.addLog(`🔐 Server đã tạo AES Key chung: ${globalAESStr.substring(0, 40)}...`, 'key');
+            
+            for (let id of [1, 2]) {
+                const clientPub = await cryptoSim.importPubKey(cryptoSim.clients[id].pubKey);
+                const encryptedAes = await cryptoSim.encryptAESKey(cryptoSim.globalAESKey, clientPub);
+                cryptoSim.clients[id].aesKey = await cryptoSim.decryptAESKey(encryptedAes, cryptoSim.clients[id].keys.privateKey);
+                cryptoSim.addLog(`🔐 Client ${id}: Đã nhận và giải mã AES Key chung thành công`, 'crypto');
+                document.getElementById(`client${id}AESKey`).innerHTML = globalAESStr.substring(0, 40) + '...';
+            }
+            
+            document.getElementById('aesKeySize').textContent = '256';
+            cryptoSim.addLog('✅ Tất cả clients đều có CHUNG một AES Key để mã hóa/giải mã tin nhắn', 'success');
+            
+            // Step 4: Ready
+            cryptoSim.addLog('🎉 BƯỚC 4: Kênh chat an toàn đã sẵn sàng!', 'success');
+            updateStepIndicator(4);
+            step = 4;
+            
+            document.getElementById('serverStatus').innerHTML = '● Đang chạy | 2 Clients đã kết nối';
+            document.getElementById('clientsList').innerHTML = `
+                <div class="client-badge online">👤 Client 1 (Online)</div>
+                <div class="client-badge online">👤 Client 2 (Online)</div>
+            `;
+            
+            document.getElementById('client1SendBtn').disabled = false;
+            document.getElementById('client2SendBtn').disabled = false;
+            
+            addChatMessage(1, '🔐 Kênh chat an toàn đã sẵn sàng! Bạn có thể chat với Client 2 qua Server.', 'system');
+            addChatMessage(2, '🔐 Kênh chat an toàn đã sẵn sàng! Bạn có thể chat với Client 1 qua Server.', 'system');
+            
+            cryptoSim.addServerMessage('Hệ thống', 'Server đã sẵn sàng, kênh chat AES-256 đã được thiết lập');
+            
+            initialized = true;
+        }
+
+        async function sendMessage(senderId) {
+            if (!initialized || step < 4) {
+                alert('Vui lòng chờ thiết lập kết nối hoàn tất!');
+                return;
+            }
+            
+            const messageInput = document.getElementById(`client${senderId}Message`);
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                alert('Vui lòng nhập tin nhắn!');
+                return;
+            }
+            
+            if (message.toLowerCase() === 'exit') {
+                addChatMessage(senderId, '👋 Đã ngắt kết nối', 'system');
+                messageInput.value = '';
+                return;
+            }
+            
+            // Hiển thị tin nhắn đã gửi
+            addChatMessage(senderId, message, 'sent');
+            
+            // Mã hóa tin nhắn bằng AES key CHUNG
+            cryptoSim.addLog(`🔐 Client ${senderId}: Mã hóa tin nhắn bằng AES-256...`, 'crypto');
+            const encryptedMessage = await cryptoSim.encryptMessage(message, cryptoSim.globalAESKey);
+            cryptoSim.addLog(`📧 Bản mã: ${encryptedMessage.substring(0, 50)}...`, 'info');
+            
+            // SERVER nhận được tin nhắn đã mã hóa - HIỂN THỊ TRONG SERVER CHAT BOX
+            cryptoSim.addServerMessage(senderId, encryptedMessage);
+            cryptoSim.addLog(`🖥️ Server: Nhận tin nhắn đã mã hóa từ Client ${senderId}`, 'info');
+            
+            // Chuyển tiếp đến client kia
+            const receiverId = senderId === 1 ? 2 : 1;
+            cryptoSim.addLog(`🖥️ Server: Chuyển tiếp tin nhắn đến Client ${receiverId}`, 'info');
+            
+            // Client nhận giải mã
+            cryptoSim.addLog(`🔓 Client ${receiverId}: Giải mã tin nhắn...`, 'crypto');
+            const decryptedMessage = await cryptoSim.decryptMessage(encryptedMessage, cryptoSim.globalAESKey);
+            cryptoSim.addLog(`📨 Tin nhắn đã giải mã: "${decryptedMessage}"`, 'success');
+            
+            // Hiển thị tin nhắn đã nhận
+            addChatMessage(receiverId, decryptedMessage, 'received', senderId);
+            
+            cryptoSim.incMessage();
+            messageInput.value = '';
+        }
+
+        function clearLogs() {
+            cryptoSim.logs = [];
+            document.getElementById('encryptionLog').innerHTML = '<div class="log-line">📋 Log đã được xóa</div>';
+            cryptoSim.addLog('Log đã được xóa', 'info');
+        }
+
+        initialize().catch(console.error);
+    </script>
+</body>
+</html>
